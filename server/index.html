@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Website Monitoring</title>
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .status {
+        display: flex;
+        align-items: center;
+      }
+      .status-circle {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+      }
+      .online {
+        color: green;
+      }
+      .online .status-circle {
+        background-color: green;
+      }
+      .offline {
+        color: red;
+      }
+      .offline .status-circle {
+        background-color: red;
+      }
+      .history-square {
+        width: 10px;
+        height: 10px;
+        display: inline-block;
+        margin-right: 2px;
+      }
+      .online-square {
+        background-color: green;
+      }
+      .offline-square {
+        background-color: red;
+      }
+    </style>
+  </head>
+  <body class="container">
+    <h1 class="my-4">Website Monitoring</h1>
+    <p id="timestamp" class="text-muted">Last updated: N/A</p>
+    <ul id="websites" class="list-group"></ul>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+      const socket = io();
+
+      socket.on("update", (data) => {
+        const { websites, timestamp } = data;
+        const list = document.getElementById("websites");
+        const timestampElement = document.getElementById("timestamp");
+
+        timestampElement.textContent = `Last updated: ${timestamp}`;
+        list.innerHTML = "";
+        websites.forEach((website) => {
+          const listItem = document.createElement("li");
+          listItem.className = `list-group-item status ${website.status.toLowerCase()}`;
+          const historySquares = website.history
+            .map(
+              (entry) =>
+                `<span class="history-square ${entry.status.toLowerCase()}-square"></span>`
+            )
+            .join("");
+          listItem.innerHTML = `
+          <div>
+            <div class="status-circle"></div>
+          <strong>${website.url}:</strong> ${website.status}
+            </div>
+          <div class="mt-2">${historySquares}</div>
+        `;
+          list.appendChild(listItem);
+        });
+      });
+    </script>
+  </body>
+</html>
