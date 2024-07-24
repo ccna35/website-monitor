@@ -16,6 +16,7 @@ app.use(
 
 // Helper function to verify GitHub signature
 const verifySignature = (req: Request, res: Response, rawBody: Buffer) => {
+  console.log("Verifying Signature");
   const signature = req.headers["x-hub-signature"] as string;
   const hmac = crypto.createHmac("sha1", "secret");
   const digest = Buffer.from(
@@ -27,6 +28,8 @@ const verifySignature = (req: Request, res: Response, rawBody: Buffer) => {
     checksum.length !== digest.length ||
     !crypto.timingSafeEqual(digest, checksum)
   ) {
+    console.log("Invalid signature");
+
     throw new Error("Invalid signature");
   }
 };
