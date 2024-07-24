@@ -15,17 +15,19 @@ app.use(
 );
 
 // Helper function to verify GitHub signature
-const verifySignature = (req: Request, res: Response, buf: Buffer) => {
-  const secret = "secret";
+const verifySignature = (req: Request, res: Response, rawBody: Buffer) => {
   const signature = req.headers["x-hub-signature"] as string;
-  const hmac = crypto.createHmac("sha1", secret);
-  hmac.update(buf.toString("utf-8"));
-  const digest = `sha1=${hmac.digest("hex")}`;
-
-  if (signature !== digest) {
-    return res
-      .status(403)
-      .send("Request body was not signed or verification failed");
+  const hmac = crypto.createHmac("sha1", process.env.GITHUB_WEBHOOK_SECRET!);
+  const digest = Buffer.from(
+    "sha1=" + hmac.update(rawBody).digest("hex"),
+    "utf8"
+  );
+  const checksum = Buffer.from(signature, "utf8");
+  if (
+    checksum.length !== digest.length ||
+    !crypto.timingSafeEqual(digest, checksum)
+  ) {
+    throw new Error("Invalid signature");
   }
 };
 
