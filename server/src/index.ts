@@ -17,7 +17,7 @@ app.use(
 // Helper function to verify GitHub signature
 const verifySignature = (req: Request, res: Response, rawBody: Buffer) => {
   const signature = req.headers["x-hub-signature"] as string;
-  const hmac = crypto.createHmac("sha1", process.env.GITHUB_WEBHOOK_SECRET!);
+  const hmac = crypto.createHmac("sha1", "secret");
   const digest = Buffer.from(
     "sha1=" + hmac.update(rawBody).digest("hex"),
     "utf8"
