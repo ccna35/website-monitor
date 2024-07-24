@@ -30,24 +30,27 @@ const verifySignature = (req: Request, res: Response, buf: Buffer) => {
 };
 
 // Middleware to verify the signature (if using GitHub)
-// app.use((req: Request, res: Response, next: NextFunction) => {
-//   const rawBody = (req as any).rawBody as Buffer;
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const rawBody = (req as any).rawBody as Buffer;
 
-//   if (rawBody) {
-//     verifySignature(req, res, rawBody);
-//   } else {
-//     let chunks: Buffer[] = [];
-//     req.on("data", (chunk: Buffer) => {
-//       chunks.push(chunk);
-//     });
-//     req.on("end", () => {
-//       const rawBody = Buffer.concat(chunks);
-//       (req as any).rawBody = rawBody;
-//       verifySignature(req, res, rawBody);
-//       next();
-//     });
-//   }
-// });
+  if (rawBody) {
+    console.log("Raw Body Exists!");
+
+    verifySignature(req, res, rawBody);
+  } else {
+    console.log("Raw Body Does Not Exist!");
+    let chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      const rawBody = Buffer.concat(chunks);
+      (req as any).rawBody = rawBody;
+      verifySignature(req, res, rawBody);
+      next();
+    });
+  }
+});
 
 // Webhook endpoint
 app.post("/webhook", (req: Request, res: Response) => {
