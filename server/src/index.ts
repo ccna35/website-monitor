@@ -1,74 +1,48 @@
-import express, { Request, Response, NextFunction } from "express";
-import bodyParser from "body-parser";
-import crypto from "crypto";
+import express from "express";
+import { specs, swaggerUi } from "./swagger";
+
+import sqlite3 from "sqlite3";
+import { open } from "sqlite";
+
+import userRoutes from "./routes/users";
+import productRoutes from "./routes/products";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
-// Middleware to parse JSON payloads
-app.use(
-  bodyParser.json({
-    verify: (req: Request, res: Response, buf: Buffer) => {
-      (req as any).rawBody = buf;
-    },
-  })
-);
+app.use(express.json());
 
-// Helper function to verify GitHub signature
-const verifySignature = (req: Request, res: Response, rawBody: Buffer) => {
-  console.log("Verifying Signature");
-  const signature = req.headers["x-hub-signature"] as string;
-  const hmac = crypto.createHmac("sha1", "secret");
-  const digest = Buffer.from(
-    "sha1=" + hmac.update(rawBody).digest("hex"),
-    "utf8"
-  );
-  const checksum = Buffer.from(signature, "utf8");
-  if (
-    checksum.length !== digest.length ||
-    !crypto.timingSafeEqual(digest, checksum)
-  ) {
-    console.log("Invalid signature");
+// Open a database connection
+const db = open({
+  filename: "./database.db",
+  driver: sqlite3.Database,
+});
 
-    throw new Error("Invalid signature");
-  }
+const setupDatabase = async () => {
+  const database = await db;
+
+  // Create a table
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      price REAL NOT NULL
+    )
+  `);
 };
 
-// Middleware to verify the signature (if using GitHub)
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const rawBody = (req as any).rawBody as Buffer;
-
-  if (rawBody) {
-    console.log("Raw Body Exists!");
-
-    verifySignature(req, res, rawBody);
-  } else {
-    console.log("Raw Body Does Not Exist!");
-    let chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => {
-      chunks.push(chunk);
-    });
-    req.on("end", () => {
-      const rawBody = Buffer.concat(chunks);
-      (req as any).rawBody = rawBody;
-      verifySignature(req, res, rawBody);
-      next();
-    });
-  }
+setupDatabase().catch((err) => {
+  console.error("Database error:", err.message);
 });
 
-// Webhook endpoint
-app.post("/webhook", (req: Request, res: Response) => {
-  const event = req.headers["x-github-event"] as string;
-  const payload = req.body;
-
-  if (event === "push") {
-    console.log(`Received a push event for ${payload.repository.name}`);
-    // Handle the push event here
-  }
-
-  res.status(200).send("Webhook received successfully");
-});
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/products", productRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
